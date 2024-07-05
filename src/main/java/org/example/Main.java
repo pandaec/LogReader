@@ -11,14 +11,15 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.concurrent.Executors;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main {
     public static void main(String[] args) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
         server.createContext("/", new RootHandler());
-        server.createContext("/sse", new SSEHandler());
-        server.setExecutor(Executors.newFixedThreadPool(10));
+        server.createContext("/search", new SearchHandler());
+        server.setExecutor(null);
         server.start();
         System.out.println("Server started on port 8000");
     }
@@ -26,23 +27,7 @@ public class Main {
     static class RootHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String response =
-                    "<!DOCTYPE html>" +
-                            "<html>" +
-                            "<head>" +
-                            "    <style>body{font-family: monospace;}</style>" +
-                            "    <script src='https://unpkg.com/htmx.org@2.0.0'></script>" +
-                            "    <script src='https://unpkg.com/htmx-ext-sse@2.0.0/sse.js'></script>" +
-                            "</head>" +
-                            "<body>" +
-                            "    <div hx-ext='sse' sse-connect='/sse'>" +
-                            "        <div id='messages' sse-swap='log-message' hx-swap='beforeend'>" +
-                            "            Waiting for updates..." +
-                            "        </div>" +
-                            "    </div>" +
-                            "</body>" +
-                            "</html>";
-
+            String response = Files.readString(Paths.get("static", "index.html"));
             exchange.getResponseHeaders().set("Content-Type", "text/html");
             exchange.sendResponseHeaders(200, response.length());
             try (OutputStream os = exchange.getResponseBody()) {
@@ -51,9 +36,11 @@ public class Main {
         }
     }
 
-    static class SSEHandler implements HttpHandler {
+    static class SearchHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+            Map<String, String> queryMap = queryToMap(exchange.getRequestURI().getQuery());
+            String query = queryMap.get("q");
             exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
             exchange.getResponseHeaders().add("Cache-Control", "no-cache");
             exchange.getResponseHeaders().add("Connection", "keep-alive");
@@ -62,14 +49,17 @@ public class Main {
             try (BufferedReader reader = Files.newBufferedReader(Paths.get("static/dummy.log"));
                  OutputStream os = exchange.getResponseBody()) {
                 String line;
-                while ((line = reader.readLine()) != null) {
-                    line = "<div>"+escapeXml(line)+"</div>";
-                    String message = "event: log-message\n" +  // Specify the event name
-                            "data: " + line + "\n\n";  // The actual data
+                int i = 0;
+                while ((line = reader.readLine()) != null && i++ < 1000) {
+                    if (line.contains(query)) {
+                        line = "<div>" + escapeXml(line) + "</div>";
+                        String message = "event: log-message\n" +  // Specify the event name
+                                "data: " + line + "\n\n";  // The actual data
 
-                    os.write(message.getBytes(StandardCharsets.UTF_8));
-                    os.flush();
-                    Thread.sleep(100);
+                        os.write(message.getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                        Thread.sleep(100);
+                    }
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -104,5 +94,21 @@ public class Main {
             }
         }
         return escaped.toString();
+    }
+
+    public static Map<String, String> queryToMap(String query) {
+        if (query == null) {
+            return new HashMap<>();
+        }
+        Map<String, String> result = new HashMap<>();
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=");
+            if (pair.length > 1) {
+                result.put(pair[0], pair[1]);
+            } else {
+                result.put(pair[0], "");
+            }
+        }
+        return result;
     }
 }
