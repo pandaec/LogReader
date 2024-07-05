@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Main {
@@ -46,19 +47,22 @@ public class Main {
             exchange.getResponseHeaders().add("Connection", "keep-alive");
             exchange.sendResponseHeaders(200, 0);
 
-            try (BufferedReader reader = Files.newBufferedReader(Paths.get("static/dummy.log"));
-                 OutputStream os = exchange.getResponseBody()) {
-                String line;
+            try (OutputStream os = exchange.getResponseBody()) {
+                ILogParser.Log log = ILogParser.Log.load(List.of(Paths.get("static", "dummy.log")));
+                log.start();
                 int i = 0;
-                while ((line = reader.readLine()) != null && i++ < 1000) {
-                    if (line.contains(query)) {
-                        line = "<div>" + escapeXml(line) + "</div>";
-                        String message = "event: log-message\n" +  // Specify the event name
-                                "data: " + line + "\n\n";  // The actual data
+                for (ILogParser.LogDetail line : log.lines) {
+                    if(i++ > 500) {
+                        break;
+                    }
+                    if (line.getContent().contains(query)) {
+                        String data = "<div>" + escapeXml(line.priority + ";" + line.threadName + ";" + line.time + ";" + line.getContent()) + "</div>";
+                        String message = "event: log-message\n" +
+                                "data: " + data + "\n\n";
 
                         os.write(message.getBytes(StandardCharsets.UTF_8));
                         os.flush();
-                        Thread.sleep(100);
+//                        Thread.sleep(100);
                     }
                 }
             } catch (InterruptedException e) {
