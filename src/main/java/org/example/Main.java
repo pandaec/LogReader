@@ -2,6 +2,7 @@ package org.example;
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
@@ -47,74 +48,88 @@ public class Main {
     static class SearchHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            Map<String, String> queryMap = queryToMap(exchange.getRequestURI().getRawQuery());
-            String query = queryMap.get("q") != null ? URLDecoder.decode(queryMap.get("q"), StandardCharsets.UTF_8)
-                    : "";
-            String fromFile = queryMap.get("from") != null
-                    ? URLDecoder.decode(queryMap.get("from"), StandardCharsets.UTF_8)
-                    : null;
+            try {
+                Map<String, String> queryMap = queryToMap(exchange.getRequestURI().getRawQuery());
+                String query = queryMap.get("q") != null ? URLDecoder.decode(queryMap.get("q"), StandardCharsets.UTF_8)
+                        : "";
+                String fromFile = queryMap.get("from") != null
+                        ? URLDecoder.decode(queryMap.get("from"), StandardCharsets.UTF_8)
+                        : null;
 
-            exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
-            exchange.getResponseHeaders().add("Cache-Control", "no-cache");
-            exchange.getResponseHeaders().add("Connection", "keep-alive");
-            exchange.sendResponseHeaders(200, 0);
+                exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
+                exchange.getResponseHeaders().add("Cache-Control", "no-cache");
+                exchange.getResponseHeaders().add("Connection", "keep-alive");
+                exchange.sendResponseHeaders(200, 0);
 
-            try (OutputStream os = exchange.getResponseBody()) {
-                List<Path> logPaths = new ArrayList<>();
-                try {
-                    Path path = Paths.get("static", "logs");
-                    try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
-                        for (Path entry : stream) {
-                            if (Files.isRegularFile(entry)) {
-                                logPaths.add(entry);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    List<Path> logPaths = new ArrayList<>();
+                    try {
+                        Path path = Paths.get("static", "logs");
+                        try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
+                            for (Path entry : stream) {
+                                if (Files.isRegularFile(entry)) {
+                                    logPaths.add(entry);
+                                }
+                            }
+                        }
+                    } catch (InvalidPathException | IOException e) {
+                        e.printStackTrace();
+                    }
+                    Collections.sort(logPaths);
+                    if (fromFile != null) {
+                        int idx = -1;
+                        for (int i = 0; i < logPaths.size(); i++) {
+                            if (fromFile.equals(logPaths.get(i).getFileName().toString())) {
+                                idx = i;
+                                break;
+                            }
+                        }
+                        if (idx > -1) {
+                            if (idx + 1 < logPaths.size()) {
+                                logPaths = logPaths.subList(idx + 1, logPaths.size());
+                            } else {
+                                logPaths = new ArrayList<>();
                             }
                         }
                     }
-                } catch (InvalidPathException | IOException e) {
-                    e.printStackTrace();
-                }
-                Collections.sort(logPaths);
-                if (fromFile != null) {
-                    int idx = -1;
-                    for (int i = 0; i < logPaths.size(); i++) {
-                        if (fromFile.equals(logPaths.get(i).getFileName().toString())) {
-                            idx = i;
+
+                    ILogParser.Log log = ILogParser.Log.load(logPaths);
+                    log.start();
+                    int resultLimit = 0;
+                    Map<String, Pattern> patternMap = parseFilter(query, false);
+
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    for (ILogParser.LogDetail detail : log.lines) {
+                        if (resultLimit > 1000) {
                             break;
                         }
-                    }
-                    if (idx > -1) {
-                        if (idx + 1 < logPaths.size()) {
-                            logPaths = logPaths.subList(idx + 1, logPaths.size());
-                        } else {
-                            logPaths = new ArrayList<>();
+
+                        if (isLineMatchFilter(detail, patternMap)) {
+                            String json = objectMapper.writeValueAsString(detail);
+                            String data = "<div>" + escapeXml(
+                                    detail.priority + ";" + detail.threadName + ";" + detail.time + ";"
+                                            + detail.getContent())
+                                    + "</div>";
+                            String message = "event: log-message\n" +
+                                    "data: " + json + "\n\n";
+
+                            os.write(message.getBytes(StandardCharsets.UTF_8));
+                            os.flush();
+                            // Thread.sleep(100);
+                            resultLimit++;
                         }
                     }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-
-                ILogParser.Log log = ILogParser.Log.load(logPaths);
-                log.start();
-                int resultLimit = 0;
-                Map<String, Pattern> patternMap = parseFilter(query, false);
-
-                for (ILogParser.LogDetail line : log.lines) {
-                    if (resultLimit > 1000) {
-                        break;
-                    }
-                    if (isLineMatchFilter(line, patternMap)) {
-                        String data = "<div>" + escapeXml(
-                                line.priority + ";" + line.threadName + ";" + line.time + ";" + line.getContent())
-                                + "</div>";
-                        String message = "event: log-message\n" +
-                                "data: " + data + "\n\n";
-
-                        os.write(message.getBytes(StandardCharsets.UTF_8));
-                        os.flush();
-                        // Thread.sleep(100);
-                        resultLimit++;
-                    }
-                }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
+                String response = "Internal server error";
+                exchange.getResponseHeaders().set("Content-Type", "text/plain");
+                exchange.sendResponseHeaders(500, response.length());
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(response.getBytes(StandardCharsets.UTF_8));
+                }
             }
         }
     }

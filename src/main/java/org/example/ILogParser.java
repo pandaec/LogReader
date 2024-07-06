@@ -24,6 +24,22 @@ public interface ILogParser {
             this.contentBuilder = new StringBuilder(content);
         }
 
+        public long getTimestamp() {
+            return time.toInstant().toEpochMilli();
+        }
+
+        public String getThreadName() {
+            return threadName;
+        }
+
+        public String getPriority() {
+            return priority;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
         public String getContent() {
             if (contentBuilder == null) {
                 return content;
