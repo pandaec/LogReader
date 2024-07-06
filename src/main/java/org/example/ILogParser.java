@@ -28,7 +28,7 @@ public interface ILogParser {
             return time.toInstant().toEpochMilli();
         }
 
-        public String getThreadName() {
+        public String getThread() {
             return threadName;
         }
 
