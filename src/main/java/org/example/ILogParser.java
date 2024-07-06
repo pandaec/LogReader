@@ -1,7 +1,7 @@
 package org.example;
 
 import java.nio.file.Path;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,12 +9,13 @@ public interface ILogParser {
 
     class LogDetail {
         final int id;
-        final LocalDateTime time;
+        final ZonedDateTime time;
         final String threadName, priority, fileName;
         private String content;
         private StringBuilder contentBuilder;
 
-        public LogDetail(int id, LocalDateTime time, String threadName, String priority, String fileName, String content) {
+        public LogDetail(int id, ZonedDateTime time, String threadName, String priority, String fileName,
+                String content) {
             this.id = id;
             this.time = time;
             this.threadName = threadName;
@@ -37,7 +38,6 @@ public interface ILogParser {
             contentBuilder.append("\n").append(c);
         }
     }
-
 
     class Log {
         List<LogDetail> lines = new ArrayList<>();
@@ -65,7 +65,6 @@ public interface ILogParser {
             allPaths = new ArrayList<>(paths);
         }
     }
-
 
     void load(Log log) throws InterruptedException;
 }
