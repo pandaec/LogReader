@@ -1,78 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Log Search Example</title>
     <style>
-            html, body {
-                font-family: Arial, sans-serif;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-            }
-            body, main{
-                margin: 0 auto;
-                padding: 0 20px;
-            }
+        html,
+        body {
+            font-family: Arial, sans-serif;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
 
-            main{
-                height: 100%;
-                width: 80vw;
-                display: flex;
-                flex-direction: column;
-            }
+        body,
+        main {
+            margin: 0 auto;
+            padding: 0 20px;
+        }
 
-            #results {
-                margin-top: 20px;
-                margin-bottom: 20px;
-                font-family: monospace;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                overflow-y: auto;
-                border: 1px solid #ccc;
-                padding: 10px;
-                flex-grow: 1;
-            }
+        main {
+            height: 100%;
+            width: 80vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #results {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            flex-grow: 1;
+        }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
+
 <body>
 
-<main>
-    <h1>Log Search Example</h1>
-    <input type="text" id="searchInput" placeholder="Enter search term"/>
-    <button onclick="startSearch()">Search</button>
-    <div id="results"></div>
-</main>
+    <main>
+        <h1>Log Search Example</h1>
+        <input type="text" id="searchInput" placeholder="Enter search term" />
+        <button onclick="startSearch()">Search</button>
+        <div id="results"></div>
+    </main>
 
-<script>
-    function startSearch() {
-        const searchTerm = document.getElementById('searchInput').value;
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = 'Searching...';
+    <script>
+        function startSearch() {
+            const searchTerm = document.getElementById('searchInput').value;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Searching...';
 
-        // Close any existing SSE connection
-        if (window.eventSource) {
-            window.eventSource.close();
-        }
-
-        // Open a new SSE connection
-        window.eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}`);
-
-        window.eventSource.addEventListener('log-message', function(event) {
-            const data = event.data;
-            if (resultsDiv.innerHTML === 'Searching...') {
-                resultsDiv.innerHTML = '';
+            // Close any existing SSE connection
+            if (window.eventSource) {
+                window.eventSource.close();
             }
-            resultsDiv.innerHTML += data;
-        });
 
-        window.eventSource.onerror = function(error) {
-            console.error('EventSource failed:', error);
-            resultsDiv.innerHTML += '<p>Error: Search failed</p>';
-            window.eventSource.close();
-        };
-    }
-</script>
+            // Open a new SSE connection
+            let fromFile = "WV-ST-20240110-0136.log";
+            window.eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}&from=${encodeURIComponent(fromFile)}`);
+
+            window.eventSource.addEventListener('log-message', function (event) {
+                const data = event.data;
+                if (resultsDiv.innerHTML === 'Searching...') {
+                    resultsDiv.innerHTML = '';
+                }
+                resultsDiv.innerHTML += data;
+            });
+
+            window.eventSource.onerror = function (error) {
+                console.error('EventSource failed:', error);
+                resultsDiv.innerHTML += '<p>Error: Search failed</p>';
+                window.eventSource.close();
+            };
+        }
+    </script>
 </body>
+
 </html>

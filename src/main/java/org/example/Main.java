@@ -9,8 +9,13 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,22 +50,57 @@ public class Main {
             Map<String, String> queryMap = queryToMap(exchange.getRequestURI().getRawQuery());
             String query = queryMap.get("q") != null ? URLDecoder.decode(queryMap.get("q"), StandardCharsets.UTF_8)
                     : "";
+            String fromFile = queryMap.get("from") != null
+                    ? URLDecoder.decode(queryMap.get("from"), StandardCharsets.UTF_8)
+                    : null;
+
             exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
             exchange.getResponseHeaders().add("Cache-Control", "no-cache");
             exchange.getResponseHeaders().add("Connection", "keep-alive");
             exchange.sendResponseHeaders(200, 0);
 
             try (OutputStream os = exchange.getResponseBody()) {
-                ILogParser.Log log = ILogParser.Log.load(List.of(Paths.get("static", "dummy.log")));
+                List<Path> logPaths = new ArrayList<>();
+                try {
+                    Path path = Paths.get("static", "logs");
+                    try (DirectoryStream<Path> stream = Files.newDirectoryStream(path)) {
+                        for (Path entry : stream) {
+                            if (Files.isRegularFile(entry)) {
+                                logPaths.add(entry);
+                            }
+                        }
+                    }
+                } catch (InvalidPathException | IOException e) {
+                    e.printStackTrace();
+                }
+                Collections.sort(logPaths);
+                if (fromFile != null) {
+                    int idx = -1;
+                    for (int i = 0; i < logPaths.size(); i++) {
+                        if (fromFile.equals(logPaths.get(i).getFileName().toString())) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                    if (idx > -1) {
+                        if (idx + 1 < logPaths.size()) {
+                            logPaths = logPaths.subList(idx + 1, logPaths.size());
+                        } else {
+                            logPaths = new ArrayList<>();
+                        }
+                    }
+                }
+
+                ILogParser.Log log = ILogParser.Log.load(logPaths);
                 log.start();
-                int i = 0;
+                int resultLimit = 0;
                 Map<String, Pattern> patternMap = parseFilter(query, false);
 
                 for (ILogParser.LogDetail line : log.lines) {
+                    if (resultLimit > 1000) {
+                        break;
+                    }
                     if (isLineMatchFilter(line, patternMap)) {
-                        if (i++ > 1000) {
-                            break;
-                        }
                         String data = "<div>" + escapeXml(
                                 line.priority + ";" + line.threadName + ";" + line.time + ";" + line.getContent())
                                 + "</div>";
@@ -70,6 +110,7 @@ public class Main {
                         os.write(message.getBytes(StandardCharsets.UTF_8));
                         os.flush();
                         // Thread.sleep(100);
+                        resultLimit++;
                     }
                 }
             } catch (InterruptedException e) {
