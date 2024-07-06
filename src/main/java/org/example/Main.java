@@ -36,11 +36,30 @@ public class Main {
     static class RootHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String response = Files.readString(Paths.get("static", "index.html"));
-            exchange.getResponseHeaders().set("Content-Type", "text/html");
-            exchange.sendResponseHeaders(200, response.length());
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(response.getBytes());
+            String uriPath = exchange.getRequestURI().getPath();
+
+            if (uriPath.equals("/") || uriPath.isEmpty()) {
+                uriPath = "/index.html";
+            }
+
+            Path filePath = Paths.get("static", uriPath);
+
+            if (Files.exists(filePath) && !Files.isDirectory(filePath)) {
+                String contentType = getContentType(filePath);
+                byte[] response = Files.readAllBytes(filePath);
+
+                exchange.getResponseHeaders().set("Content-Type", contentType);
+                exchange.sendResponseHeaders(200, response.length);
+
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(response);
+                }
+            } else {
+                String response = "404 (Not Found)\n";
+                exchange.sendResponseHeaders(404, response.length());
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(response.getBytes());
+                }
             }
         }
     }
@@ -282,5 +301,24 @@ public class Main {
             }
         }
         return !isAnyMatchTrue;
+    }
+
+    private static String getContentType(Path filePath) {
+        String fileName = filePath.getFileName().toString();
+        if (fileName.endsWith(".html")) {
+            return "text/html";
+        } else if (fileName.endsWith(".js")) {
+            return "application/javascript";
+        } else if (fileName.endsWith(".css")) {
+            return "text/css";
+        } else if (fileName.endsWith(".json")) {
+            return "application/json";
+        } else if (fileName.endsWith(".png")) {
+            return "image/png";
+        } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+            return "image/jpeg";
+        } else {
+            return "application/octet-stream";
+        }
     }
 }
