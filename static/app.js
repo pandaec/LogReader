@@ -17,12 +17,18 @@ function formatDate(date) {
 }
 
 function LogEntry({ detail }) {
+    const [isWrap, setWrap] = useState(false);
+
+    function toggleWrap() {
+        setWrap(!isWrap);
+    }
+
     return html`
         <div class="log-entry">
-            <div class="timestamp">${formatDate(new Date(detail.timestamp))}</div>
-            <div class="thread">${detail.thread}</div>
-            <div class="priority">${detail.priority}</div>
-            <div class="content">${detail.content}</div>
+            <div class="timestamp" onClick=${toggleWrap}>${formatDate(new Date(detail.timestamp))}</div>
+            <div class="thread" onClick=${toggleWrap}>${detail.thread}</div>
+            <div class="priority" onClick=${toggleWrap}>${detail.priority}</div>
+            <div class="content ${isWrap ? "content-wrap" : ""}">${detail.content}</div>
         </div>
     `;
 }
@@ -79,8 +85,8 @@ function App() {
                 onInput=${e => setSearchTerm(e.target.value)}
             />
             <button onClick=${startSearch}>Search</button>
+            ${isSearching ? html`<span>Searching...</span>` : ''}
             <div id="results">
-                ${isSearching && results.length === 0 ? 'Searching...' : ''}
                 ${error ? html`<p>${error}</p>` : ''}
                 ${results.map(detail => html`<${LogEntry} detail=${detail} />`)}
             </div>
