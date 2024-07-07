@@ -58,7 +58,7 @@ function App() {
 
             eventSource.onerror = function (error) {
                 console.error('EventSource failed:', error);
-                setError('Error: Search failed');
+                // setError('Error: Search failed');
                 setIsSearching(false);
                 eventSource.close();
             };
