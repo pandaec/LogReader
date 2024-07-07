@@ -13,12 +13,16 @@
             padding: 0;
         }
 
-        body,
-        main {
+        body {
             margin: 0 auto;
         }
 
+        #app {
+            height: 100%;
+        }
+
         main {
+            margin: 0 auto;
             height: 100%;
             min-width: 80vw;
             padding: 0 20px;
@@ -74,14 +78,9 @@
 </head>
 
 <body>
-    <main>
-        <h1>Log Search Example</h1>
-        <input type="text" id="searchInput" placeholder="Enter search term" />
-        <button onclick="startSearch()">Search</button>
-        <div id="results"></div>
-    </main>
-
-    <script src="main.js"></script>
+    <div id="app"></div>
+    <script src="https://unpkg.com/htm/preact/standalone.umd.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>
