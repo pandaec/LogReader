@@ -25,11 +25,12 @@ function App() {
         isSearching = true;
         results.innerHTML = '';
         searchingStatus.textContent = 'Searching...';
-        searchCount.innerHTML = '';
-        searchFiles.innerHTML = '';
+        searchCount.textContent = '';
+        searchFiles.textContent = '';
 
         let count = 0;
         let pathLoaded = new Set();
+        let resultsRenderBuffer = [];
 
         const searchTerm = searchInput.value;
         eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}`);
@@ -44,12 +45,22 @@ function App() {
 
                 searchCount.innerHTML = `${count}`;
                 searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
-                results.appendChild(createLogEntry(data));
+                resultsRenderBuffer.push(createLogEntry(data));
+                if (resultsRenderBuffer.length >= 1000) {
+                    results.append(...resultsRenderBuffer);
+                    resultsRenderBuffer = [];
+                }
             }
         });
 
         eventSource.onerror = function (error) {
             console.error('EventSource failed:', error);
+
+            // if (resultsRenderBuffer.length > 0) {
+            //     results.appendChild(...resultsRenderBuffer);
+            //     resultsRenderBuffer = [];
+            // }
+
             isSearching = false;
             searchingStatus.textContent = '';
             eventSource.close();
@@ -70,8 +81,8 @@ function App() {
         isSearching = true;
         results.innerHTML = '';
         searchingStatus.textContent = 'Searching...';
-        searchCount.innerHTML = '';
-        searchFiles.innerHTML = '';
+        searchCount.textContent = '';
+        searchFiles.textContent = '';
 
         let count = 0;
         let pathLoaded = new Set();
@@ -87,8 +98,8 @@ function App() {
                 pathLoaded.add(data['fileName']);
                 lastFileName = data['fileName'];
 
-                searchCount.innerHTML = `${count}`;
-                searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
+                searchCount.textContent = `${count}`;
+                searchFiles.textContent = `${Array.from(pathLoaded).join(', ')}`;
                 results.appendChild(createLogEntry(data));
             }
         });
