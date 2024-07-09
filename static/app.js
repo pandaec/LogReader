@@ -1,3 +1,71 @@
+App();
+
+function App() {
+    let isSearching = false;
+    let eventSource;
+
+    const searchInput = document.querySelector('#searchInput');
+    const searchButton = document.querySelector('#searchButton');
+    const searchingStatus = document.querySelector('#searchingStatus');
+    const searchFiles = document.querySelector('#searchFiles');
+    const searchCount = document.querySelector('#searchCount');
+    const results = document.querySelector('#results');
+
+    searchButton.addEventListener('click', startSearch);
+
+    function startSearch() {
+        if (isSearching) return;
+
+        isSearching = true;
+        results.innerHTML = '';
+        searchingStatus.textContent = 'Searching...';
+
+        let count = 0;
+        let pathLoaded = new Set();
+
+        const searchTerm = searchInput.value;
+        eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}`);
+
+        eventSource.addEventListener('log-message', function (event) {
+            const data = JSON.parse(event.data);
+            if (data) {
+                count += 1;
+                // TODO Will not show fileName if no line found in that file. 
+                pathLoaded.add(data['fileName']);
+
+                searchCount.innerHTML = `${count}`;
+                searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
+                results.appendChild(createLogEntry(data));
+            }
+        });
+
+        eventSource.onerror = function (error) {
+            console.error('EventSource failed:', error);
+            isSearching = false;
+            searchingStatus.textContent = '';
+            eventSource.close();
+        };
+    }
+}
+
+function createLogEntry(detail) {
+    const el = document.createElement('div');
+    el.className = 'log-entry';
+    el.innerHTML = `
+        <div class="timestamp">${formatDate(new Date(detail.timestamp))}</div>
+        <div class="thread">${detail.thread}</div>
+        <div class="priority">${detail.priority}</div>
+        <div class="content">${escapeXML(detail.content)}</div>
+    `;
+
+    let toggleWrap = () => el.querySelector('.content').classList.toggle('content-wrap');
+    el.querySelector('.timestamp').addEventListener('click', toggleWrap);
+    el.querySelector('.thread').addEventListener('click', toggleWrap);
+    el.querySelector('.priority').addEventListener('click', toggleWrap);
+
+    return el;
+}
+
 function formatDate(date) {
     const pad = (num, size) => {
         let s = "000" + num;
@@ -14,59 +82,14 @@ function formatDate(date) {
     return `${month}-${day} ${hours}:${minutes}:${seconds}${milliseconds}`;
 }
 
-function createLogEntry(detail) {
-    const el = document.createElement('div');
-    el.className = 'log-entry';
-    el.innerHTML = `
-        <div class="timestamp">${formatDate(new Date(detail.timestamp))}</div>
-        <div class="thread">${detail.thread}</div>
-        <div class="priority">${detail.priority}</div>
-        <div class="content">${detail.content}</div>
-    `;
-
-    let toggleWrap = () => el.querySelector('.content').classList.toggle('content-wrap');
-    el.querySelector('.timestamp').addEventListener('click', toggleWrap);
-    el.querySelector('.thread').addEventListener('click', toggleWrap);
-    el.querySelector('.priority').addEventListener('click', toggleWrap);
-
-    return el;
+function escapeXML(str) {
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
 }
-
-function App() {
-    let isSearching = false;
-    let eventSource;
-
-    const searchInput = document.querySelector('#searchInput');
-    const searchButton = document.querySelector('#searchButton');
-    const searchingStatus = document.querySelector('#searchingStatus');
-    const results = document.querySelector('#results');
-
-    searchButton.addEventListener('click', startSearch);
-
-    function startSearch() {
-        if (isSearching) return;
-
-        isSearching = true;
-        results.innerHTML = '';
-        searchingStatus.textContent = 'Searching...';
-
-        const searchTerm = searchInput.value;
-        eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}`);
-
-        eventSource.addEventListener('log-message', function (event) {
-            const data = JSON.parse(event.data);
-            if (data) {
-                results.appendChild(createLogEntry(data));
-            }
-        });
-
-        eventSource.onerror = function (error) {
-            console.error('EventSource failed:', error);
-            isSearching = false;
-            searchingStatus.textContent = '';
-            eventSource.close();
-        };
-    }
-}
-
-App();

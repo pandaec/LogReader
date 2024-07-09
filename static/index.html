@@ -87,7 +87,11 @@
         <h1>Log Search Example</h1>
         <input type="text" placeholder="Enter search term" id="searchInput" />
         <button id="searchButton">Search</button>
-        <span id="searchingStatus"></span>
+        <div class="searchStats">
+            <span id="searchingStatus"></span>
+            <span>Count: <span id="searchCount">0</span></span>
+            <span>Included file: [<span id="searchFiles"></span>]</span>
+        </div>
         <div id="results"></div>
     </main>
     <script src="app.js"></script>
