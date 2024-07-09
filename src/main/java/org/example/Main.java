@@ -97,8 +97,10 @@ public class Main {
                     Collections.sort(logPaths);
                     if (fromFile != null) {
                         int idx = -1;
+                        Path fromPath = Paths.get(fromFile);
                         for (int i = 0; i < logPaths.size(); i++) {
-                            if (fromFile.equals(logPaths.get(i).getFileName().toString())) {
+                            Path path = logPaths.get(i);
+                            if (fromPath.normalize().equals(path.normalize())) {
                                 idx = i;
                                 break;
                             }
@@ -111,24 +113,26 @@ public class Main {
                             }
                         }
                     }
+                    if (logPaths.size() > 3) {
+                        logPaths = logPaths.subList(0, 3);
+                    }
 
                     ILogParser.Log log = ILogParser.Log.load(logPaths);
                     log.start();
                     int resultLimit = 0;
                     Map<String, Pattern> patternMap = parseFilter(query, false);
-
+                    String lastFileName = null;
                     ObjectMapper objectMapper = new ObjectMapper();
                     for (ILogParser.LogDetail detail : log.lines) {
-                        if (resultLimit > 1000) {
-                            break;
+                        if (lastFileName == null || !lastFileName.equals(detail.fileName)) {
+                            if (resultLimit > 1000) {
+                                break;
+                            }
+                            lastFileName = detail.fileName;
                         }
 
                         if (isLineMatchFilter(detail, patternMap)) {
                             String json = objectMapper.writeValueAsString(detail);
-                            String data = "<div>" + escapeXml(
-                                    detail.priority + ";" + detail.threadName + ";" + detail.time + ";"
-                                            + detail.getContent())
-                                    + "</div>";
                             String message = "event: log-message\n" +
                                     "data: " + json + "\n\n";
 

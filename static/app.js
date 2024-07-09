@@ -16,7 +16,7 @@ function App() {
     searchButton.addEventListener('click', startSearch);
 
     function startSearch() {
-        if(eventSource){
+        if (eventSource) {
             eventSource.close();
         }
 
@@ -25,6 +25,8 @@ function App() {
         isSearching = true;
         results.innerHTML = '';
         searchingStatus.textContent = 'Searching...';
+        searchCount.innerHTML = '';
+        searchFiles.innerHTML = '';
 
         let count = 0;
         let pathLoaded = new Set();
@@ -57,17 +59,19 @@ function App() {
     nextButton.addEventListener('click', progressSearch);
 
     function progressSearch() {
-        if(!lastFileName) {
+        if (!lastFileName) {
             return startSearch();
         }
 
-        if(eventSource){
+        if (eventSource) {
             eventSource.close();
         }
 
         isSearching = true;
         results.innerHTML = '';
         searchingStatus.textContent = 'Searching...';
+        searchCount.innerHTML = '';
+        searchFiles.innerHTML = '';
 
         let count = 0;
         let pathLoaded = new Set();
@@ -81,6 +85,7 @@ function App() {
                 count += 1;
                 // TODO Will not show fileName if no line found in that file. 
                 pathLoaded.add(data['fileName']);
+                lastFileName = data['fileName'];
 
                 searchCount.innerHTML = `${count}`;
                 searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
@@ -132,7 +137,7 @@ function formatDate(date) {
 }
 
 function escapeXML(str) {
-    return str.replace(/[&<>'"]/g, 
+    return str.replace(/[&<>'"]/g,
         tag => ({
             '&': '&amp;',
             '<': '&lt;',
