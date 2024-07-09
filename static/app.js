@@ -2,10 +2,12 @@ App();
 
 function App() {
     let isSearching = false;
+    let lastFileName;
     let eventSource;
 
     const searchInput = document.querySelector('#searchInput');
     const searchButton = document.querySelector('#searchButton');
+    const nextButton = document.querySelector('#nextButton');
     const searchingStatus = document.querySelector('#searchingStatus');
     const searchFiles = document.querySelector('#searchFiles');
     const searchCount = document.querySelector('#searchCount');
@@ -14,6 +16,10 @@ function App() {
     searchButton.addEventListener('click', startSearch);
 
     function startSearch() {
+        if(eventSource){
+            eventSource.close();
+        }
+
         if (isSearching) return;
 
         isSearching = true;
@@ -25,6 +31,49 @@ function App() {
 
         const searchTerm = searchInput.value;
         eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}`);
+
+        eventSource.addEventListener('log-message', function (event) {
+            const data = JSON.parse(event.data);
+            if (data) {
+                count += 1;
+                // TODO Will not show fileName if no line found in that file. 
+                pathLoaded.add(data['fileName']);
+                lastFileName = data['fileName'];
+
+                searchCount.innerHTML = `${count}`;
+                searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
+                results.appendChild(createLogEntry(data));
+            }
+        });
+
+        eventSource.onerror = function (error) {
+            console.error('EventSource failed:', error);
+            isSearching = false;
+            searchingStatus.textContent = '';
+            eventSource.close();
+        };
+    }
+
+    nextButton.addEventListener('click', progressSearch);
+
+    function progressSearch() {
+        if(!lastFileName) {
+            return startSearch();
+        }
+
+        if(eventSource){
+            eventSource.close();
+        }
+
+        isSearching = true;
+        results.innerHTML = '';
+        searchingStatus.textContent = 'Searching...';
+
+        let count = 0;
+        let pathLoaded = new Set();
+
+        const searchTerm = searchInput.value;
+        eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}&from=${encodeURIComponent(lastFileName)}`);
 
         eventSource.addEventListener('log-message', function (event) {
             const data = JSON.parse(event.data);
