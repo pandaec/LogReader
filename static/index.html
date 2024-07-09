@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -82,9 +83,14 @@
 </head>
 
 <body>
-    <div id="app"></div>
-    <script src="https://unpkg.com/htm/preact/standalone.umd.js"></script>
-    <script type="module" src="app.js"></script>
+    <main>
+        <h1>Log Search Example</h1>
+        <input type="text" placeholder="Enter search term" id="searchInput" />
+        <button id="searchButton">Search</button>
+        <span id="searchingStatus"></span>
+        <div id="results"></div>
+    </main>
+    <script src="app.js"></script>
 </body>
 
 </html>
