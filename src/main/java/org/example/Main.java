@@ -20,6 +20,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -117,33 +120,29 @@ public class Main {
                         logPaths = logPaths.subList(0, 3);
                     }
 
-                    ILogParser.Log log = ILogParser.Log.load(logPaths);
-                    log.start();
-                    int resultLimit = 0;
-                    Map<String, Pattern> patternMap = parseFilter(query, false);
-                    String lastFileName = null;
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    for (ILogParser.LogDetail detail : log.lines) {
-                        if (lastFileName == null || !lastFileName.equals(detail.fileName)) {
-                            if (resultLimit > 1000) {
-                                break;
-                            }
-                            lastFileName = detail.fileName;
+                    Map<String, Pattern> filter = parseFilter(query, false);
+                    ILogParser.Log log = ILogParser.Log.load(logPaths, filter);
+                    ExecutorService executor = Executors.newSingleThreadExecutor();
+                    executor.submit(() -> {
+                        try {
+                            log.start();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
+                    });
 
-                        if (isLineMatchFilter(detail, patternMap)) {
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    while (log.loadQueue.isLoading.get() || !log.loadQueue.queue.isEmpty()) {
+                        ILogParser.LogDetail detail = log.loadQueue.queue.poll(250, TimeUnit.MILLISECONDS);
+                        if (detail != null) {
                             String json = objectMapper.writeValueAsString(detail);
                             String message = "event: log-message\n" +
                                     "data: " + json + "\n\n";
 
                             os.write(message.getBytes(StandardCharsets.UTF_8));
                             os.flush();
-                            // Thread.sleep(100);
-                            resultLimit++;
                         }
                     }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -271,40 +270,6 @@ public class Main {
             // filter.isRegexError = true;
         }
         return mapPattern;
-    }
-
-    static boolean isLineMatchFilter(ILogParser.LogDetail detail, Map<String, Pattern> mapPattern) {
-        if (mapPattern.isEmpty()) {
-            return true;
-        }
-        Pattern patternDefault = mapPattern.get("*");
-        boolean isAnyMatchTrue = mapPattern.size() == 1 && patternDefault != null;
-        Map<String, String> map = new HashMap<>();
-        map.put("C1", detail.priority);
-        map.put("LEVEL", detail.priority);
-        map.put("C2", detail.threadName);
-        map.put("THREAD", detail.threadName);
-        map.put("C3", detail.getContent());
-        map.put("CONTENT", detail.getContent());
-
-        for (Map.Entry<String, String> kv : map.entrySet()) {
-            Pattern pattern = mapPattern.getOrDefault(kv.getKey(), patternDefault);
-            if (pattern == null) {
-                continue;
-            }
-            String content = kv.getValue();
-            boolean isMatch = pattern.matcher(content).find();
-            if (!isAnyMatchTrue) {
-                if (!isMatch) {
-                    return false;
-                }
-            } else {
-                if (isMatch) {
-                    return true;
-                }
-            }
-        }
-        return !isAnyMatchTrue;
     }
 
     private static String getContentType(Path filePath) {

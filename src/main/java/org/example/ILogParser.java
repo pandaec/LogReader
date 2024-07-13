@@ -3,7 +3,13 @@ package org.example;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 
 public interface ILogParser {
 
@@ -58,10 +64,14 @@ public interface ILogParser {
     class Log {
         List<LogDetail> lines = new ArrayList<>();
         LoadStatus loadStatus;
+        LoadQueue loadQueue;
+        Map<String, Pattern> filter;
 
-        public static Log load(List<Path> paths) {
+        public static Log load(List<Path> paths, Map<String, Pattern> filter) {
             var l = new Log();
             l.loadStatus = new LoadStatus(new ArrayList<>(paths));
+            l.loadQueue = new LoadQueue();
+            l.filter = filter == null ? Collections.emptyMap() : filter;
             return l;
         }
 
@@ -80,6 +90,11 @@ public interface ILogParser {
         public LoadStatus(List<Path> paths) {
             allPaths = new ArrayList<>(paths);
         }
+    }
+
+    class LoadQueue {
+        AtomicBoolean isLoading = new AtomicBoolean(true);
+        BlockingQueue<LogDetail> queue = new ArrayBlockingQueue<>(1_000_000);
     }
 
     void load(Log log) throws InterruptedException;

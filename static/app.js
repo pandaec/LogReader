@@ -46,7 +46,7 @@ function App() {
                 searchCount.innerHTML = `${count}`;
                 searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
                 resultsRenderBuffer.push(createLogEntry(data));
-                if (resultsRenderBuffer.length >= 1000) {
+                if (resultsRenderBuffer.length >= 100) {
                     results.append(...resultsRenderBuffer);
                     resultsRenderBuffer = [];
                 }
@@ -56,10 +56,10 @@ function App() {
         eventSource.onerror = function (error) {
             console.error('EventSource failed:', error);
 
-            // if (resultsRenderBuffer.length > 0) {
-            //     results.appendChild(...resultsRenderBuffer);
-            //     resultsRenderBuffer = [];
-            // }
+            if (resultsRenderBuffer.length > 0) {
+                results.append(...resultsRenderBuffer);
+                resultsRenderBuffer = [];
+            }
 
             isSearching = false;
             searchingStatus.textContent = '';
@@ -78,6 +78,8 @@ function App() {
             eventSource.close();
         }
 
+        if (isSearching) return;
+
         isSearching = true;
         results.innerHTML = '';
         searchingStatus.textContent = 'Searching...';
@@ -86,6 +88,7 @@ function App() {
 
         let count = 0;
         let pathLoaded = new Set();
+        let resultsRenderBuffer = [];
 
         const searchTerm = searchInput.value;
         eventSource = new EventSource(`/search?q=${encodeURIComponent(searchTerm)}&from=${encodeURIComponent(lastFileName)}`);
@@ -98,14 +101,24 @@ function App() {
                 pathLoaded.add(data['fileName']);
                 lastFileName = data['fileName'];
 
-                searchCount.textContent = `${count}`;
-                searchFiles.textContent = `${Array.from(pathLoaded).join(', ')}`;
-                results.appendChild(createLogEntry(data));
+                searchCount.innerHTML = `${count}`;
+                searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
+                resultsRenderBuffer.push(createLogEntry(data));
+                if (resultsRenderBuffer.length >= 100) {
+                    results.append(...resultsRenderBuffer);
+                    resultsRenderBuffer = [];
+                }
             }
         });
 
         eventSource.onerror = function (error) {
             console.error('EventSource failed:', error);
+
+            if (resultsRenderBuffer.length > 0) {
+                results.append(...resultsRenderBuffer);
+                resultsRenderBuffer = [];
+            }
+
             isSearching = false;
             searchingStatus.textContent = '';
             eventSource.close();
