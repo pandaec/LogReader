@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -12,6 +11,8 @@
             height: 100%;
             margin: 0;
             padding: 0;
+            background-color: #232325;
+            color: #ffffff;
         }
 
         body {
@@ -38,16 +39,17 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow-y: auto;
-            border: 1px solid #ccc;
+            border: 1px solid #444;
             padding: 10px;
             flex-grow: 1;
+            background-color: #2a2a2c;
         }
 
         .log-entry {
             display: grid;
             grid-template-columns: 130px 100px 30px 1fr;
             gap: 10px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #444;
             padding: 3px 0;
         }
 
@@ -57,7 +59,7 @@
 
         .timestamp {
             font-weight: bold;
-            color: #555;
+            color: #b0b0b0;
         }
 
         .thread {
@@ -67,7 +69,7 @@
 
         .priority {
             font-weight: bold;
-            color: #c00;
+            color: #ff6b6b;
         }
 
         .content {
@@ -77,6 +79,32 @@
         .content.content-wrap {
             white-space: normal;
             word-wrap: break-word;
+        }
+
+        input[type="text"],
+        button {
+            background-color: #2a2a2c;
+            color: #ffffff;
+            border: 1px solid #444;
+            padding: 5px 10px;
+            margin-right: 10px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #3a3a3c;
+        }
+
+        .searchStats {
+            margin-top: 10px;
+            color: #b0b0b0;
+        }
+
+        h1 {
+            color: #ffffff;
         }
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
