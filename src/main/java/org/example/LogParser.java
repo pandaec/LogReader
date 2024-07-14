@@ -35,6 +35,7 @@ public class LogParser implements ILogParser {
             String currentFileName = p.getFileName().toString();
 
             try (var reader = Files.newBufferedReader(p)) {
+                detail = null;
                 for (String line = reader.readLine(); line != null; line = reader.readLine()) {
                     Matcher matcher = pattern.matcher(line);
                     if (matcher.matches()) {
