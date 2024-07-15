@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -89,7 +90,7 @@ public class Main {
                 exchange.getResponseHeaders().add("Connection", "keep-alive");
                 exchange.sendResponseHeaders(200, 0);
 
-                try (OutputStream os = exchange.getResponseBody()) {
+                try (BufferedOutputStream os = new BufferedOutputStream(exchange.getResponseBody())) {
                     List<Path> logPaths = new ArrayList<>();
                     try {
                         Path path = Paths.get("static", "logs");
@@ -150,7 +151,6 @@ public class Main {
                             String message = "event: log-message\n" +
                                     "data: " + responseJson + "\n\n";
                             os.write(message.getBytes(StandardCharsets.UTF_8));
-                            os.flush();
                         }
                     }
                 }
