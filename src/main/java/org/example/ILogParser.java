@@ -11,9 +11,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
+import org.example.IResponse.IResponseBody;
+
 public interface ILogParser {
 
-    class LogDetail {
+    class LogDetail implements IResponseBody {
         final int id;
         final ZonedDateTime time;
         final String threadName, priority, fileName;
@@ -61,6 +63,9 @@ public interface ILogParser {
         }
     }
 
+    record LoadProgress(String loadedPath, String progress) implements IResponseBody {
+    }
+
     class Log {
         List<LogDetail> lines = new ArrayList<>();
         LoadStatus loadStatus;
@@ -94,7 +99,7 @@ public interface ILogParser {
 
     class LoadQueue {
         AtomicBoolean isLoading = new AtomicBoolean(true);
-        BlockingQueue<LogDetail> queue = new ArrayBlockingQueue<>(1_000_000);
+        BlockingQueue<IResponseBody> queue = new ArrayBlockingQueue<>(1_000_000);
     }
 
     void load(Log log) throws InterruptedException;

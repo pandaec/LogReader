@@ -48,17 +48,22 @@ function App() {
         eventSource.addEventListener('log-message', function (event) {
             const data = JSON.parse(event.data);
             if (data) {
-                count += 1;
-                // TODO Will not show fileName if no line found in that file. 
-                pathLoaded.add(data['fileName']);
-                lastFileName = data['fileName'];
-
-                searchCount.innerHTML = `${count}`;
-                searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
-                resultsRenderBuffer.push(createLogEntry(data));
-                if (resultsRenderBuffer.length >= 100) {
-                    results.append(...resultsRenderBuffer);
-                    resultsRenderBuffer = [];
+                if (data['name'] === 'logDetail') {
+                    count += 1;
+                    searchCount.innerHTML = `${count}`;
+                    resultsRenderBuffer.push(createLogEntry(data['body']));
+                    if (resultsRenderBuffer.length >= 100) {
+                        results.append(...resultsRenderBuffer);
+                        resultsRenderBuffer = [];
+                    }
+                } else if (data['name'] === 'logProgress') {
+                    let path = data['body']['loadedPath'];
+                    let progress = data['body']['progress'];
+                    if (progress === 'start') {
+                        pathLoaded.add(path);
+                        lastFileName = path;
+                        searchFiles.innerHTML = `${Array.from(pathLoaded).join(', ')}`;
+                    }
                 }
             }
         });

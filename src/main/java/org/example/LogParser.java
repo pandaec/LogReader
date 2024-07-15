@@ -27,7 +27,6 @@ public class LogParser implements ILogParser {
         int resultLimit = 1000;
         int resultCount = 0;
         for (Path p : log.loadStatus.allPaths) {
-            System.out.println("ResultCount=" + resultCount);
             if (resultCount > resultLimit) {
                 break;
             }
@@ -35,6 +34,7 @@ public class LogParser implements ILogParser {
             String currentFileName = p.getFileName().toString();
 
             try (var reader = Files.newBufferedReader(p)) {
+                log.loadQueue.queue.add(new LoadProgress(p.getFileName().toString(), "start"));
                 detail = null;
                 for (String line = reader.readLine(); line != null; line = reader.readLine()) {
                     Matcher matcher = pattern.matcher(line);
@@ -55,6 +55,7 @@ public class LogParser implements ILogParser {
                         }
                     }
                 }
+                log.loadQueue.queue.add(new LoadProgress(p.getFileName().toString(), "end"));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

@@ -26,6 +26,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.example.ILogParser.LoadProgress;
+import org.example.ILogParser.LogDetail;
+import org.example.IResponse.IResponseBody;
+import org.example.IResponse.ResponseLogDetail;
+import org.example.IResponse.ResponseLogProgress;
+
 public class Main {
     public static void main(String[] args) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
@@ -116,9 +122,6 @@ public class Main {
                             }
                         }
                     }
-                    if (logPaths.size() > 3) {
-                        logPaths = logPaths.subList(0, 3);
-                    }
 
                     Map<String, Pattern> filter = parseFilter(query, false);
                     ILogParser.Log log = ILogParser.Log.load(logPaths, filter);
@@ -133,18 +136,27 @@ public class Main {
 
                     ObjectMapper objectMapper = new ObjectMapper();
                     while (log.loadQueue.isLoading.get() || !log.loadQueue.queue.isEmpty()) {
-                        ILogParser.LogDetail detail = log.loadQueue.queue.poll(250, TimeUnit.MILLISECONDS);
-                        if (detail != null) {
-                            String json = objectMapper.writeValueAsString(detail);
-                            String message = "event: log-message\n" +
-                                    "data: " + json + "\n\n";
+                        IResponseBody body = log.loadQueue.queue.poll(250, TimeUnit.MILLISECONDS);
+                        String responseJson = null;
+                        if (body instanceof LogDetail) {
+                            ResponseLogDetail response = new ResponseLogDetail((LogDetail) body);
+                            responseJson = objectMapper.writeValueAsString(response);
 
+                        } else if (body instanceof LoadProgress) {
+                            ResponseLogProgress response = new ResponseLogProgress((LoadProgress) body);
+                            responseJson = objectMapper.writeValueAsString(response);
+                        }
+                        if (responseJson != null) {
+                            String message = "event: log-message\n" +
+                                    "data: " + responseJson + "\n\n";
                             os.write(message.getBytes(StandardCharsets.UTF_8));
                             os.flush();
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (
+
+            Exception e) {
                 e.printStackTrace();
                 String response = "Internal server error";
                 exchange.getResponseHeaders().set("Content-Type", "text/plain");
@@ -154,6 +166,7 @@ public class Main {
                 }
             }
         }
+
     }
 
     public static String escapeXml(String input) {
