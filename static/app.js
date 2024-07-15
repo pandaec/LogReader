@@ -15,6 +15,11 @@ function App() {
 
     searchButton.addEventListener('click', () => progressSearch({}));
     nextButton.addEventListener('click', () => progressSearch({ 'from': lastFileName }));
+    searchInput.addEventListener('keydown', e => {
+        if (e.key == 'Enter') {
+            progressSearch({});
+        }
+    });
 
     function progressSearch(param) {
         if (eventSource) {
