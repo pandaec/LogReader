@@ -104,7 +104,7 @@ function formatDate(date) {
     const seconds = pad(date.getSeconds(), 2);
     const milliseconds = pad(date.getMilliseconds(), 3);
 
-    return `${month}-${day} ${hours}:${minutes}:${seconds}${milliseconds}`;
+    return `${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
 }
 
 function escapeXML(str) {
